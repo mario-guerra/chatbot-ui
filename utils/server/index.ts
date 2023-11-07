@@ -32,8 +32,9 @@ export const OpenAIStream = async (
 ) => {
   let url = `${OPENAI_API_HOST}/v1/chat/completions`;
   if (OPENAI_API_TYPE === 'azure') {
-    url = `${OPENAI_API_HOST}/openai/deployments/${AZURE_DEPLOYMENT_ID}/chat/completions?api-version=${OPENAI_API_VERSION}`;
+    url = `${OPENAI_API_HOST}/openai/deployments/${model.id}/chat/completions?api-version=${OPENAI_API_VERSION}`;
   }
+
   const res = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
@@ -62,7 +63,6 @@ export const OpenAIStream = async (
       stream: true,
     }),
   });
-
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
 
@@ -92,6 +92,12 @@ export const OpenAIStream = async (
 
           try {
             const json = JSON.parse(data);
+
+            // If choices is empty, return and wait for the next chunk
+            if (json.choices.length === 0) {
+              return;
+            }
+
             if (json.choices[0].finish_reason != null) {
               controller.close();
               return;
@@ -100,7 +106,11 @@ export const OpenAIStream = async (
             const queue = encoder.encode(text);
             controller.enqueue(queue);
           } catch (e) {
-            controller.error(e);
+            if (data === "[DONE]") {
+              console.log("Operation complete");
+            } else {
+              controller.error(e);
+            }
           }
         }
       };
