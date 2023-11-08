@@ -26,7 +26,7 @@ docker run -e OPENAI_API_KEY=xxxxxxxx -p 3000:3000 ghcr.io/mckaywrigley/chatbot-
 **1. Clone Repo**
 
 ```bash
-git clone [https://github.com/mario-guerra/chatbot-ui.git](https://github.com/mario-guerra/chatbot-ui)
+git clone https://github.com/mario-guerra/chatbot-ui
 ```
 
 **2. Install Dependencies**
