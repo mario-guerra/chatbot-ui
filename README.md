@@ -2,9 +2,10 @@
 
 ## About
 
-Chad Jipiti is an open source chat UI for AI models.
+Chad Jipiti is an open source chat UI for OpenAI models. Cloned for internal use, not maintained for external use.  
 
-![Chad Jipiti](./public/screenshots/screenshot-0402023.jpg)
+
+![Chad Jipiti](./public/screenshots/Chad-Jipiti.png)
 
 **Docker**
 
