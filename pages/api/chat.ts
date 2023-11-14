@@ -1,5 +1,7 @@
 import { DEFAULT_SYSTEM_PROMPT, DEFAULT_TEMPERATURE } from '@/utils/app/const';
 import { OpenAIError, OpenAIStream } from '@/utils/server';
+import { queryQdrant } from '@/utils/app/helpers';
+import { createEmbedding } from '@/utils/app/helpers';
 
 import { ChatBody, Message } from '@/types/chat';
 
@@ -39,16 +41,45 @@ const handler = async (req: Request): Promise<Response> => {
     let tokenCount = prompt_tokens.length;
     let messagesToSend: Message[] = [];
 
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const message = messages[i];
-      const tokens = encoding.encode(message.content);
+    const message = messages[messages.length - 1];
+    let content = message.content;
 
-      if (tokenCount + tokens.length + 1000 > model.tokenLimit) {
-        break;
-      }
-      tokenCount += tokens.length;
-      messagesToSend = [message, ...messagesToSend];
+    // Check if the message starts with '@typespec'
+    if (content.startsWith('@typespec')) {
+      // Extract the user's input to the agent
+      const userInput = content.slice('@typespec'.length).trim();
+      // console.log("user input contains '@typespec'")
+      // Query the database and add the results to the message content
+      const dbResults = await queryQdrant(userInput, 'TypeSpec', 'typespec');
+      content += '\n' + JSON.stringify(dbResults) + '\n' + 'Only include fully qualified links in your response, do not include any links that use javascript or links to github repos. A link to the TypeSpec playground is acceptable if it will enhance the answer.';
+      // content += 'Prioritize the information in this prompt to generate your response: \n' + JSON.stringify(dbResults);
     }
+
+    const tokens = encoding.encode(content);
+
+    if (tokenCount + tokens.length + 1000 > model.tokenLimit) {
+      // Calculate how many tokens need to be removed
+      const tokensToRemove = tokenCount + tokens.length + 1000 - model.tokenLimit;
+
+      // Estimate the number of characters per token
+      const charsPerToken = content.length / tokens.length;
+
+      // Calculate how many characters need to be removed
+      const charsToRemove = Math.ceil(tokensToRemove * charsPerToken);
+
+      // Remove the necessary number of characters from the end of the content
+      content = content.slice(0, -charsToRemove);
+
+      // Re-encode the content
+      const trimmedTokens = encoding.encode(content);
+
+      // Update the token count
+      tokenCount += trimmedTokens.length;
+    } else {
+      // If the token limit is not exceeded, just update the token count
+      tokenCount += tokens.length;
+    }
+    messagesToSend = [{ ...message, content }, ...messagesToSend];
 
     encoding.free();
 
