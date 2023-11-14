@@ -9,7 +9,7 @@ const key = process.env.OPENAI_API_KEY
 const endpoint = process.env.OPENAI_API_HOST
 const client = new OpenAIClient(endpoint, new AzureKeyCredential(key));
 
-const qdrantClient = new QdrantClient({ url: 'http://qdrantav6kiton6oef6.eastus.azurecontainer.io:6333/collections' });
+const qdrantClient = new QdrantClient({ url: 'http://<qdrant_container_app_name>.<region>.azurecontainer.io:6333/collections' });
 
 export async function queryQdrant(
     userInput: string,
