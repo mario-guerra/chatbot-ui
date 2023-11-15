@@ -41,45 +41,33 @@ const handler = async (req: Request): Promise<Response> => {
     let tokenCount = prompt_tokens.length;
     let messagesToSend: Message[] = [];
 
-    const message = messages[messages.length - 1];
-    let content = message.content;
+    for (let i = 0; i < messages.length; i++) {
+      let message = messages[i];
+      let content = message.content;
+      if (content.includes('@typespec')) {
+        const userInput = content.replace('@typespec', '').trim();
+        message.content = userInput;
+        // console.log('User input: ', userInput)
+        const dbResults = await queryQdrant(userInput, 'TypeSpec', 'typespec');
+        content = userInput + '\n' + JSON.stringify(dbResults) + '\n' + 'Provide code samples when possible. Only include fully qualified links in your response. A link to the TypeSpec playground is acceptable if it will enhance the answer.';
+      }
 
-    // Check if the message starts with '@typespec'
-    if (content.startsWith('@typespec')) {
-      // Extract the user's input to the agent
-      const userInput = content.slice('@typespec'.length).trim();
-      // console.log("user input contains '@typespec'")
-      // Query the database and add the results to the message content
-      const dbResults = await queryQdrant(userInput, 'TypeSpec', 'typespec');
-      content += '\n' + JSON.stringify(dbResults) + '\n' + 'Only include fully qualified links in your response, do not include any links that use javascript or links to github repos. A link to the TypeSpec playground is acceptable if it will enhance the answer.';
-      // content += 'Prioritize the information in this prompt to generate your response: \n' + JSON.stringify(dbResults);
+      const tokens = encoding.encode(content);
+
+      if (tokenCount + tokens.length + 1000 > model.tokenLimit) {
+        const tokensToRemove = tokenCount + tokens.length + 1000 - model.tokenLimit;
+        const charsPerToken = content.length / tokens.length;
+        const charsToRemove = Math.ceil(tokensToRemove * charsPerToken);
+        content = content.slice(0, -charsToRemove);
+        const trimmedTokens = encoding.encode(content);
+        tokenCount += trimmedTokens.length;
+      } else {
+        tokenCount += tokens.length;
+      }
+      // console.log("message: ", message)
+      // console.log("content: ", content)
+      messagesToSend.push({ ...message, content });
     }
-
-    const tokens = encoding.encode(content);
-
-    if (tokenCount + tokens.length + 1000 > model.tokenLimit) {
-      // Calculate how many tokens need to be removed
-      const tokensToRemove = tokenCount + tokens.length + 1000 - model.tokenLimit;
-
-      // Estimate the number of characters per token
-      const charsPerToken = content.length / tokens.length;
-
-      // Calculate how many characters need to be removed
-      const charsToRemove = Math.ceil(tokensToRemove * charsPerToken);
-
-      // Remove the necessary number of characters from the end of the content
-      content = content.slice(0, -charsToRemove);
-
-      // Re-encode the content
-      const trimmedTokens = encoding.encode(content);
-
-      // Update the token count
-      tokenCount += trimmedTokens.length;
-    } else {
-      // If the token limit is not exceeded, just update the token count
-      tokenCount += tokens.length;
-    }
-    messagesToSend = [{ ...message, content }, ...messagesToSend];
 
     encoding.free();
 
