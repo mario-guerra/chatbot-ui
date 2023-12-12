@@ -46,12 +46,11 @@ const handler = async (req: Request): Promise<Response> => {
       let content = message.content;
       if (content.includes('@typespec')) {
         const userInput = content.replace('@typespec', '').trim();
-        message.content = userInput;
-        // console.log('User input: ', userInput)
+        message.content = userInput + ' ' + "azure core"
+        console.log('User input: ', userInput)
         const dbResults = await queryQdrant(userInput, 'TypeSpec', 'typespec');
-        content = userInput + '\n' + JSON.stringify(dbResults) + '\n' + 'Provide code samples when possible. Only include fully qualified links in your response. A link to the TypeSpec playground is acceptable if it will enhance the answer.';
+        content = userInput + '\n' + JSON.stringify(dbResults) + '\n' + 'You are an expert in TypeSpec, a specialized language designed by MicroSoft for describing cloud service APIs. Do not confuse TypeSpec with TypeScript, they are two entirely different languages for different purposes. Any request to define a REST API should use the Azure Core library. Assume a data plane REST API unless an ARM REST API is requested. Provide code samples when possible. Code samples should show all imports required. Only include fully qualified links in your response. A link to the TypeSpec playground is acceptable if it will enhance the answer.';
       }
-
       const tokens = encoding.encode(content);
 
       if (tokenCount + tokens.length + 1000 > model.tokenLimit) {
